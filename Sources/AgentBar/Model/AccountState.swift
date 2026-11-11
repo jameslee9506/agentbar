@@ -15,6 +15,13 @@ struct AccountState: Identifiable, Sendable {
     var id: AccountID { account.id }
     var isStale: Bool { usage != nil && (usageError != nil || lastSuccessfulRefresh == nil) }
 
+    /// Claude Code accounts before Codex accounts, each by name.
+    static func defaultOrder(_ lhs: AccountState, _ rhs: AccountState) -> Bool {
+        if lhs.id.provider != rhs.id.provider { return lhs.id.provider < rhs.id.provider }
+        let order = lhs.account.name.localizedStandardCompare(rhs.account.name)
+        return order == .orderedSame ? lhs.id < rhs.id : order == .orderedAscending
+    }
+
     func snapshot(at date: Date) -> UsageSnapshot? {
         usage?.rolledForward(to: date)
     }

@@ -34,13 +34,7 @@ final class AccountStore {
         self.workEndDelay = workEndDelay
     }
 
-    var accounts: [AccountState] {
-        states.values.sorted {
-            if $0.id.provider != $1.id.provider { return $0.id.provider < $1.id.provider }
-            let order = $0.account.name.localizedStandardCompare($1.account.name)
-            return order == .orderedSame ? $0.id < $1.id : order == .orderedAscending
-        }
-    }
+    var accounts: [AccountState] { states.values.sorted(by: AccountState.defaultOrder) }
 
     var workingCount: Int { states.values.reduce(0) { $0 + $1.activity.workingCount } }
     var isRefreshing: Bool { states.values.contains(where: \.isRefreshing) }

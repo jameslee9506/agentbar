@@ -27,6 +27,37 @@ struct StatusItemPlanTests {
         #expect(StatusItemPlan.make(accounts: accounts, settings: settings, now: TestFixtures.date).map(\.id) == [.overview])
     }
 
+    @Test func itemsAndPanelFollowTheOrderArrangedInSettings() async throws {
+        let suite = "dev.agentbar.tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        let a = TestFixtures.account("alpha")
+        let b = TestFixtures.account("beta")
+        let c = TestFixtures.account("gamma", kind: .codex)
+        let d = TestFixtures.account("delta")
+        let accounts = [c, d, b, a].map { AccountState(account: $0) }
+        func plan() -> [AccountID?] {
+            StatusItemPlan.make(accounts: accounts, settings: settings, now: TestFixtures.date).map(\.accountID)
+        }
+        #expect(plan() == [a.id, b.id, d.id, c.id])
+        settings.setAccountOrder([c.id, b.id])
+        // Accounts never arranged follow, in their default order.
+        #expect(plan() == [c.id, b.id, a.id, d.id])
+        settings.setVisible(false, for: c.id)
+        #expect(plan() == [b.id, a.id, d.id])
+        #expect(MenuBarAccounts.ordered(accounts, settings: settings).map(\.id) == [c.id, b.id, a.id, d.id])
+
+        settings.menuBarMode = .combined
+        let store = AccountStore(providers: [
+            TestProvider(kind: .claude, accounts: [a, b, d]), TestProvider(kind: .codex, accounts: [c]),
+        ])
+        defer { store.stop() }
+        await store.refresh(reason: .launch)
+        let panel = AccountPanelView(store: store, settings: settings, accountID: nil, actions: .none)
+        #expect(panel.accounts.map(\.id) == [b.id, a.id, d.id])
+    }
+
     @Test func combinedExcludesHiddenWorkingSessions() throws {
         let suite = "dev.agentbar.tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))

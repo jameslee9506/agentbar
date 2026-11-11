@@ -58,6 +58,18 @@ struct SnapshotExporter {
                     )
                 }
             }
+            // The second account dragged down past the third.
+            let dragged = MenuBarAccounts.ordered(store.accounts, settings: settings).dropFirst().first
+            try await render(
+                AccountSettingsView(
+                    store: store, settings: settings,
+                    drag: dragged.map { AccountSettingsView.Drag(id: $0.id, grab: 28, pointer: 150) }
+                )
+                .frame(width: 460).padding(.vertical, 16).background(.background),
+                // Rows make room once they have been measured.
+                size: nil, dark: dark, settle: .milliseconds(500),
+                to: directory.appendingPathComponent("settings-accounts-dragging-\(suffix).png")
+            )
             try await render(
                 StatisticsView(store: store), size: StatisticsLayout.preferredSize, dark: dark,
                 to: directory.appendingPathComponent("statistics-accounts-\(suffix).png")
@@ -74,7 +86,10 @@ struct SnapshotExporter {
         }
     }
 
-    private func render<Content: View>(_ content: Content, size: NSSize?, dark: Bool, to url: URL) async throws {
+    /// `settle` is how long the view takes to measure itself and finish moving.
+    private func render<Content: View>(
+        _ content: Content, size: NSSize?, dark: Bool, settle: Duration = .milliseconds(100), to url: URL
+    ) async throws {
         let view = NSHostingView(rootView: content
             .environment(\.colorScheme, dark ? .dark : .light)
             .environment(\.locale, Locale(identifier: "en_US"))
@@ -91,7 +106,7 @@ struct SnapshotExporter {
         view.frame = bounds
         view.layoutSubtreeIfNeeded()
         // Let SwiftUI resolve native controls without ever presenting the window.
-        try await Task.sleep(for: .milliseconds(100))
+        try await Task.sleep(for: settle)
         view.layoutSubtreeIfNeeded()
         if size == nil {
             fitting = view.fittingSize

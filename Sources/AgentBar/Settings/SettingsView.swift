@@ -16,12 +16,13 @@ struct SettingsView: View {
             .labelsHidden().pickerStyle(.segmented).frame(width: 220)
             switch selection {
             case .general:
-                GeneralSettingsView(settings: settings, loginItem: loginItem)
+                GeneralSettingsView(settings: settings, loginItem: loginItem).padding(.horizontal, 16)
             case .accounts:
+                // Edge to edge, so its scroller is at the edge of the window.
                 AccountSettingsView(store: store, settings: settings)
             }
         }
-        .padding(16)
+        .padding(.vertical, 16)
         .frame(width: 460)
         .fixedSize(horizontal: false, vertical: true)
         .background(.background)

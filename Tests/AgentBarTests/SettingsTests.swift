@@ -29,6 +29,22 @@ struct SettingsTests {
         #expect(AppSettings(defaults: defaults).isVisible(id))
     }
 
+    @Test func accountOrderPersistsAndKeepsAccountsThatAreGone() throws {
+        let suite = "dev.agentbar.tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        let a = TestFixtures.account("alpha").id
+        let b = TestFixtures.account("beta").id
+        let c = TestFixtures.account("gamma", kind: .codex).id
+        #expect(settings.accountOrder.isEmpty)
+        settings.setAccountOrder([c, a, b])
+        #expect(AppSettings(defaults: defaults).accountOrder == [c, a, b].map(\.description))
+        // Arranged while gamma is gone: it stays ordered, after the accounts arranged.
+        settings.setAccountOrder([b, a])
+        #expect(AppSettings(defaults: defaults).accountOrder == [b, a, c].map(\.description))
+    }
+
     @Test func invalidStoredValuesFallBackToDefaults() throws {
         let suite = "dev.agentbar.tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -36,10 +52,12 @@ struct SettingsTests {
         defaults.set("unknown", forKey: "menuBarMode")
         defaults.set("unknown", forKey: "menuBarNumber")
         defaults.set(-20, forKey: "refreshMinutes")
+        defaults.set(42, forKey: "accountOrder")
         let settings = AppSettings(defaults: defaults)
         #expect(settings.menuBarMode == .separate)
         #expect(settings.menuBarNumber == .workingSessions)
         #expect(settings.refreshMinutes == 5)
+        #expect(settings.accountOrder.isEmpty)
         settings.refreshMinutes = 0
         #expect(settings.refreshMinutes == 5)
         #expect(defaults.integer(forKey: "refreshMinutes") == 5)

@@ -25,6 +25,10 @@ final class AppSettings {
     private(set) var hiddenAccountIDs: Set<String> {
         didSet { defaults.set(hiddenAccountIDs.sorted(), forKey: "hiddenAccountIDs") }
     }
+    /// Account IDs in the order arranged in Settings, including accounts that are gone.
+    private(set) var accountOrder: [String] {
+        didSet { defaults.set(accountOrder, forKey: "accountOrder") }
+    }
     @ObservationIgnored private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -35,6 +39,7 @@ final class AppSettings {
         let interval = defaults.integer(forKey: "refreshMinutes")
         refreshMinutes = Self.refreshIntervals.contains(interval) ? interval : 5
         hiddenAccountIDs = Set(defaults.stringArray(forKey: "hiddenAccountIDs") ?? [])
+        accountOrder = defaults.stringArray(forKey: "accountOrder") ?? []
     }
 
     func isVisible(_ id: AccountID) -> Bool { !hiddenAccountIDs.contains(id.description) }
@@ -45,5 +50,14 @@ final class AppSettings {
         } else {
             hiddenAccountIDs.insert(id.description)
         }
+    }
+
+    /// Orders the accounts as `ids` lists them. Accounts ordered before but not listed, as accounts
+    /// that are gone, follow in their order.
+    func setAccountOrder(_ ids: [AccountID]) {
+        let listed = ids.map(\.description)
+        let known = Set(listed)
+        let order = listed + accountOrder.filter { !known.contains($0) }
+        if order != accountOrder { accountOrder = order }
     }
 }
