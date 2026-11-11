@@ -13,10 +13,25 @@ struct StatusItemLoggerTests {
         logger.record([a, b])
         logger.record([a, b])
         #expect(lines == ["items: claude:personal working=2 · codex"])
-        let combined = StatusItemDescriptor(id: .overview, provider: nil, name: nil, workingCount: 3, accessibilityLabel: "AgentBar")
+        let combined = StatusItemDescriptor(
+            id: .overview, provider: nil, name: nil, workingCount: 3,
+            number: .workingSessions, weeklyUsage: nil, accessibilityLabel: "AgentBar"
+        )
         logger.record([combined])
         #expect(lines.last == "items: combined working=3")
         #expect(lines.count == 2)
+    }
+
+    @Test func logsTheWeeklyUsageAnItemShowsAndNoLineTwice() {
+        var lines: [String] = []
+        let logger = StatusItemLogger { lines.append($0) }
+        logger.record([descriptor(name: "personal", working: 2)])
+        // Hiding the count changes the item but not what the line says.
+        logger.record([descriptor(name: "personal", working: 2, number: .off)])
+        #expect(lines == ["items: claude:personal working=2"])
+        logger.record([descriptor(name: "personal", working: 2, number: .weeklyUsage, weeklyUsage: "68%")])
+        logger.record([descriptor(name: "personal", number: .weeklyUsage, weeklyUsage: "69%")])
+        #expect(lines.dropFirst() == ["items: claude:personal working=2 week=68%", "items: claude:personal week=69%"])
     }
 
     @Test func hiddenAndEmailNamesAreSafeAndCompact() {
@@ -40,10 +55,13 @@ struct StatusItemLoggerTests {
         #expect(try !LaunchOptions(arguments: ["AgentBar", "--demo"]).log)
     }
 
-    private func descriptor(name: String?, kind: ProviderKind = .claude, working: Int = 0) -> StatusItemDescriptor {
+    private func descriptor(
+        name: String?, kind: ProviderKind = .claude, working: Int = 0,
+        number: MenuBarNumber = .workingSessions, weeklyUsage: String? = nil
+    ) -> StatusItemDescriptor {
         StatusItemDescriptor(
             id: .account(TestFixtures.account("test", kind: kind).id), provider: kind, name: name,
-            workingCount: working, accessibilityLabel: "Test account"
+            workingCount: working, number: number, weeklyUsage: weeklyUsage, accessibilityLabel: "Test account"
         )
     }
 }

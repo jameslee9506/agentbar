@@ -22,9 +22,26 @@ struct StatusItemImageTests {
         }
     }
 
-    private func image(provider: ProviderKind?, workingCount: Int) -> NSImage {
+    @Test func oneNumberAtMostFollowsTheName() {
+        _ = NSApplication.shared
+        let bare = image(workingCount: 0).size.width
+        let count = image(workingCount: 2).size.width
+        let usage = image(workingCount: 2, number: .weeklyUsage, weeklyUsage: "68%").size.width
+        #expect(bare < count)
+        #expect(count < usage)
+        // The usage takes the place of the count.
+        #expect(image(workingCount: 0, number: .weeklyUsage, weeklyUsage: "68%").size.width == usage)
+        #expect(image(workingCount: 2, number: .weeklyUsage).size.width == bare)
+        #expect(image(workingCount: 2, number: .off).size.width == bare)
+    }
+
+    private func image(
+        provider: ProviderKind? = .claude, workingCount: Int,
+        number: MenuBarNumber = .workingSessions, weeklyUsage: String? = nil
+    ) -> NSImage {
         StatusItemImage.make(StatusItemDescriptor(
-            id: .overview, provider: provider, name: "work", workingCount: workingCount, accessibilityLabel: "Test"
+            id: .overview, provider: provider, name: "work", workingCount: workingCount,
+            number: number, weeklyUsage: weeklyUsage, accessibilityLabel: "Test"
         ))
     }
 

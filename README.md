@@ -10,7 +10,8 @@ Codex account on this Mac.
   second or two. The mark of a working account keeps turning.
 - **Statistics**: tokens per day, by account or by model, for 7, 30, or 90 days.
 - **Menu bar**: one item per account or a single combined item, dimmed while it has no working
-  session. Accounts can be hidden.
+  session. An item shows its working sessions, its weekly usage, or no number. Accounts can be
+  hidden.
 
 AgentBar reads account data without changing the config homes or the Keychain and never refreshes
 tokens. An account whose token has expired keeps showing its last known usage until that CLI runs

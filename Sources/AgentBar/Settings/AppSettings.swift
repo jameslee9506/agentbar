@@ -13,6 +13,9 @@ final class AppSettings {
     var showAccountNames: Bool {
         didSet { defaults.set(showAccountNames, forKey: "showAccountNames") }
     }
+    var menuBarNumber: MenuBarNumber {
+        didSet { defaults.set(menuBarNumber.rawValue, forKey: "menuBarNumber") }
+    }
     var refreshMinutes: Int {
         didSet {
             if !Self.refreshIntervals.contains(refreshMinutes) { refreshMinutes = 5 }
@@ -28,6 +31,7 @@ final class AppSettings {
         self.defaults = defaults
         menuBarMode = MenuBarMode(rawValue: defaults.string(forKey: "menuBarMode") ?? "") ?? .separate
         showAccountNames = defaults.object(forKey: "showAccountNames") as? Bool ?? true
+        menuBarNumber = MenuBarNumber(rawValue: defaults.string(forKey: "menuBarNumber") ?? "") ?? .workingSessions
         let interval = defaults.integer(forKey: "refreshMinutes")
         refreshMinutes = Self.refreshIntervals.contains(interval) ? interval : 5
         hiddenAccountIDs = Set(defaults.stringArray(forKey: "hiddenAccountIDs") ?? [])

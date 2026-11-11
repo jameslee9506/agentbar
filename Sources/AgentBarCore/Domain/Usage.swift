@@ -2,7 +2,8 @@ import Foundation
 
 /// One rate-limit window of a subscription.
 public struct UsageWindow: Identifiable, Hashable, Codable, Sendable {
-    /// Stable within an account, for example `session`, `weekly`, `weekly.opus`.
+    /// Stable within an account, for example `session`, `weekly`, `weekly.opus`. The weekly window of the
+    /// whole subscription is always `weekly`.
     public let id: String
     /// Short label, for example "5h", "Week", "Opus".
     public let title: String
@@ -36,6 +37,9 @@ public struct UsageSnapshot: Hashable, Codable, Sendable {
         self.windows = windows
         self.capturedAt = capturedAt
     }
+
+    /// The weekly window of the whole subscription, if the account has one.
+    public var weekly: UsageWindow? { windows.first { $0.id == "weekly" } }
 
     /// The snapshot with every window rolled forward to `date`.
     public func rolledForward(to date: Date) -> UsageSnapshot {

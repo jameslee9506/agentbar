@@ -11,6 +11,9 @@ struct GeneralSettingsView: View {
             }
             Toggle("Show account names", isOn: $settings.showAccountNames)
                 .disabled(settings.menuBarMode == .combined)
+            Picker("Menu bar number", selection: $settings.menuBarNumber) {
+                ForEach(MenuBarNumber.allCases) { number in Text(number.title).tag(number) }
+            }
             Picker("Refresh every", selection: $settings.refreshMinutes) {
                 ForEach(AppSettings.refreshIntervals, id: \.self) { interval in
                     Text("\(interval) minutes").tag(interval)

@@ -15,9 +15,9 @@ enum StatusItemImage {
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
         let name = descriptor.displayedName ?? ""
         let nameWidth = name.isEmpty ? 0 : ceil((name as NSString).size(withAttributes: attributes).width) + 5
-        let count = descriptor.workingCount > 0 ? String(descriptor.workingCount) : ""
-        let countWidth = count.isEmpty ? 0 : ceil((count as NSString).size(withAttributes: attributes).width) + 5
-        let size = NSSize(width: markFrame.width + nameWidth + countWidth, height: markFrame.height)
+        let number = descriptor.displayedNumber ?? ""
+        let numberWidth = number.isEmpty ? 0 : ceil((number as NSString).size(withAttributes: attributes).width) + 5
+        let size = NSSize(width: markFrame.width + nameWidth + numberWidth, height: markFrame.height)
         let image = NSImage(size: size)
         image.lockFocus()
         defer { image.unlockFocus() }
@@ -36,7 +36,7 @@ enum StatusItemImage {
             (name as NSString).draw(at: NSPoint(x: x + 2, y: 1), withAttributes: attributes)
             x += nameWidth
         }
-        if !count.isEmpty { (count as NSString).draw(at: NSPoint(x: x + 5, y: 1), withAttributes: attributes) }
+        if !number.isEmpty { (number as NSString).draw(at: NSPoint(x: x + 5, y: 1), withAttributes: attributes) }
         image.isTemplate = true
         return image
     }

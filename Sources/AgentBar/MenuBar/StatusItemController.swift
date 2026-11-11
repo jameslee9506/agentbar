@@ -14,6 +14,7 @@ final class StatusItemController: NSObject {
     private let popover = NSPopover()
     private var presentedID: StatusItemDescriptor.ID?
     private var motionObserver: NSObjectProtocol?
+    private var resetTask: Task<Void, Never>?
     private var running = false
 
     init(store: AccountStore, settings: AppSettings, actions: PanelActions, logger: StatusItemLogger? = nil) {
@@ -36,13 +37,15 @@ final class StatusItemController: NSObject {
             Task { @MainActor [weak self] in
                 guard let self, running else { return }
                 lastDescriptors.removeAll()
-                reconcile(StatusItemPlan.make(accounts: store.accounts, settings: settings))
+                update()
             }
         }
     }
 
     func stop() {
         running = false
+        resetTask?.cancel()
+        resetTask = nil
         if let motionObserver { NSWorkspace.shared.notificationCenter.removeObserver(motionObserver) }
         motionObserver = nil
         popover.close()
@@ -55,12 +58,24 @@ final class StatusItemController: NSObject {
 
     private func observe() {
         guard running else { return }
-        let descriptors = withObservationTracking {
-            StatusItemPlan.make(accounts: store.accounts, settings: settings)
-        } onChange: { [weak self] in
+        withObservationTracking { update() } onChange: { [weak self] in
             Task { @MainActor [weak self] in self?.observe() }
         }
-        reconcile(descriptors)
+    }
+
+    /// Draws the items as they are now, and again when a shown usage window resets: nothing that is
+    /// observed changes then.
+    private func update() {
+        let now = Date.now
+        reconcile(StatusItemPlan.make(accounts: store.accounts, settings: settings, now: now))
+        resetTask?.cancel()
+        resetTask = StatusItemPlan.nextReset(accounts: store.accounts, settings: settings, after: now).map { reset in
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(reset.timeIntervalSince(now)))
+                guard !Task.isCancelled, let self, running else { return }
+                update()
+            }
+        }
     }
 
     private func reconcile(_ descriptors: [StatusItemDescriptor]) {

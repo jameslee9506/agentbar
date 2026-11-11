@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 final class StatusItemLogger {
-    private var lastPlan: [StatusItemDescriptor]?
+    private var lastLine: String?
     private let output: (String) -> Void
 
     init(output: @escaping (String) -> Void = {
@@ -12,9 +12,11 @@ final class StatusItemLogger {
     }
 
     func record(_ plan: [StatusItemDescriptor]) {
-        guard plan != lastPlan else { return }
-        lastPlan = plan
-        output(Self.line(for: plan))
+        // Plans that differ only in what the line leaves out are not logged again.
+        let line = Self.line(for: plan)
+        guard line != lastLine else { return }
+        lastLine = line
+        output(line)
     }
 
     static func line(for plan: [StatusItemDescriptor]) -> String {
@@ -28,6 +30,7 @@ final class StatusItemLogger {
                 if !safeName.isEmpty, safeName != provider { label += ":\(safeName)" }
             }
             if item.workingCount > 0 { label += " working=\(item.workingCount)" }
+            if let usage = item.weeklyUsage { label += " week=\(usage)" }
             return label
         }
         return "items: " + (items.isEmpty ? "none" : items.joined(separator: " · "))

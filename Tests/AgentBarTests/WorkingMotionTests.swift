@@ -34,7 +34,7 @@ struct WorkingMotionTests {
         for provider in [ProviderKind.claude, .codex, nil] {
             let descriptor = StatusItemDescriptor(
                 id: .overview, provider: provider, name: provider == nil ? nil : "work", workingCount: 2,
-                accessibilityLabel: "Test"
+                number: .workingSessions, weeklyUsage: nil, accessibilityLabel: "Test"
             )
             let whole = StatusItemImage.make(descriptor)
             let rest = StatusItemImage.make(descriptor, drawsMark: false)

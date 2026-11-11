@@ -10,8 +10,8 @@ struct SnapshotExporter {
     func export(to directory: URL) async throws {
         await store.waitForCacheHydration()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let originalMode = settings.menuBarMode
-        defer { settings.menuBarMode = originalMode }
+        let original = (settings.menuBarMode, settings.menuBarNumber)
+        defer { (settings.menuBarMode, settings.menuBarNumber) = original }
         var settingsCases: [(count: Int, store: AccountStore)] = []
         for count in [4, 30] {
             let caseStore = AccountStore(providers: [
@@ -25,15 +25,17 @@ struct SnapshotExporter {
         for dark in [false, true] {
             let suffix = dark ? "dark" : "light"
             for mode in MenuBarMode.allCases {
-                settings.menuBarMode = mode
-                let descriptors = StatusItemPlan.make(accounts: store.accounts, settings: settings)
-                logger?.record(descriptors)
-                try await render(
-                    StatusSnapshotView(descriptors: descriptors), size: nil, dark: dark,
-                    to: directory.appendingPathComponent("status-\(mode.rawValue)-\(suffix).png")
-                )
+                for number in MenuBarNumber.allCases {
+                    (settings.menuBarMode, settings.menuBarNumber) = (mode, number)
+                    let descriptors = StatusItemPlan.make(accounts: store.accounts, settings: settings, now: .now)
+                    logger?.record(descriptors)
+                    try await render(
+                        StatusSnapshotView(descriptors: descriptors), size: nil, dark: dark,
+                        to: directory.appendingPathComponent("status-\(mode.rawValue)-\(number.rawValue)-\(suffix).png")
+                    )
+                }
             }
-            settings.menuBarMode = .separate
+            (settings.menuBarMode, settings.menuBarNumber) = (.separate, .workingSessions)
             try await render(
                 AccountPanelView(store: store, settings: settings, accountID: store.accounts.first?.id, actions: .none),
                 size: nil, dark: dark, to: directory.appendingPathComponent("panel-account-\(suffix).png")

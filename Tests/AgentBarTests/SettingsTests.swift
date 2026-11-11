@@ -11,15 +11,18 @@ struct SettingsTests {
         let settings = AppSettings(defaults: defaults)
         #expect(settings.menuBarMode == .separate)
         #expect(settings.showAccountNames)
+        #expect(settings.menuBarNumber == .workingSessions)
         #expect(settings.refreshMinutes == 5)
         let id = TestFixtures.account("alpha").id
         settings.menuBarMode = .combined
         settings.showAccountNames = false
+        settings.menuBarNumber = .weeklyUsage
         settings.refreshMinutes = 15
         settings.setVisible(false, for: id)
         let restored = AppSettings(defaults: defaults)
         #expect(restored.menuBarMode == .combined)
         #expect(!restored.showAccountNames)
+        #expect(restored.menuBarNumber == .weeklyUsage)
         #expect(restored.refreshMinutes == 15)
         #expect(!restored.isVisible(id))
         restored.setVisible(true, for: id)
@@ -31,9 +34,11 @@ struct SettingsTests {
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set("unknown", forKey: "menuBarMode")
+        defaults.set("unknown", forKey: "menuBarNumber")
         defaults.set(-20, forKey: "refreshMinutes")
         let settings = AppSettings(defaults: defaults)
         #expect(settings.menuBarMode == .separate)
+        #expect(settings.menuBarNumber == .workingSessions)
         #expect(settings.refreshMinutes == 5)
         settings.refreshMinutes = 0
         #expect(settings.refreshMinutes == 5)
