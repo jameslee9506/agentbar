@@ -35,7 +35,7 @@ struct SnapshotExporter {
                     )
                 }
             }
-            (settings.menuBarMode, settings.menuBarNumber) = (.separate, .workingSessions)
+            (settings.menuBarMode, settings.menuBarNumber) = (.separate, .weeklyUsage)
             try await render(
                 AccountPanelView(store: store, settings: settings, accountID: store.accounts.first?.id, actions: .none),
                 size: nil, dark: dark, to: directory.appendingPathComponent("panel-account-\(suffix).png")

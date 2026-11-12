@@ -111,6 +111,7 @@ struct StatusItemPlanTests {
         func plan(at date: Date = TestFixtures.date) -> [StatusItemDescriptor] {
             StatusItemPlan.make(accounts: [a, b], settings: settings, now: date)
         }
+        settings.menuBarNumber = .workingSessions
         #expect(plan().map(\.displayedNumber) == ["1", nil])
         #expect(plan().map(\.accessibilityLabel) == ["Claude Code, alpha, 1 working", "Claude Code, beta"])
         // Usage that is not shown does not change an item, so the item is not drawn again.
@@ -169,6 +170,7 @@ struct StatusItemPlanTests {
             StatusItemPlan.nextReset(accounts: accounts, settings: settings, after: now)
         }
         // A count never changes by itself.
+        settings.menuBarNumber = .workingSessions
         #expect(next() == nil)
         settings.menuBarNumber = .weeklyUsage
         #expect(next() == date.addingTimeInterval(100))

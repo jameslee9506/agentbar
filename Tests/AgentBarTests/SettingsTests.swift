@@ -11,18 +11,18 @@ struct SettingsTests {
         let settings = AppSettings(defaults: defaults)
         #expect(settings.menuBarMode == .separate)
         #expect(settings.showAccountNames)
-        #expect(settings.menuBarNumber == .workingSessions)
-        #expect(settings.refreshMinutes == 5)
+        #expect(settings.menuBarNumber == .weeklyUsage)
+        #expect(settings.refreshMinutes == 10)
         let id = TestFixtures.account("alpha").id
         settings.menuBarMode = .combined
         settings.showAccountNames = false
-        settings.menuBarNumber = .weeklyUsage
+        settings.menuBarNumber = .workingSessions
         settings.refreshMinutes = 15
         settings.setVisible(false, for: id)
         let restored = AppSettings(defaults: defaults)
         #expect(restored.menuBarMode == .combined)
         #expect(!restored.showAccountNames)
-        #expect(restored.menuBarNumber == .weeklyUsage)
+        #expect(restored.menuBarNumber == .workingSessions)
         #expect(restored.refreshMinutes == 15)
         #expect(!restored.isVisible(id))
         restored.setVisible(true, for: id)
@@ -55,11 +55,14 @@ struct SettingsTests {
         defaults.set(42, forKey: "accountOrder")
         let settings = AppSettings(defaults: defaults)
         #expect(settings.menuBarMode == .separate)
-        #expect(settings.menuBarNumber == .workingSessions)
-        #expect(settings.refreshMinutes == 5)
+        #expect(settings.menuBarNumber == .weeklyUsage)
+        #expect(settings.refreshMinutes == 10)
         #expect(settings.accountOrder.isEmpty)
         settings.refreshMinutes = 0
-        #expect(settings.refreshMinutes == 5)
-        #expect(defaults.integer(forKey: "refreshMinutes") == 5)
+        #expect(settings.refreshMinutes == 10)
+        #expect(defaults.integer(forKey: "refreshMinutes") == 10)
+        // The 2-minute interval is no longer offered.
+        defaults.set(2, forKey: "refreshMinutes")
+        #expect(AppSettings(defaults: defaults).refreshMinutes == 10)
     }
 }

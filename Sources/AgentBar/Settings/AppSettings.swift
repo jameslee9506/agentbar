@@ -5,7 +5,8 @@ import Observation
 @MainActor
 @Observable
 final class AppSettings {
-    static let refreshIntervals = [2, 5, 15, 30]
+    static let refreshIntervals = [5, 10, 15, 30]
+    static let defaultRefreshMinutes = 10
 
     var menuBarMode: MenuBarMode {
         didSet { defaults.set(menuBarMode.rawValue, forKey: "menuBarMode") }
@@ -18,7 +19,7 @@ final class AppSettings {
     }
     var refreshMinutes: Int {
         didSet {
-            if !Self.refreshIntervals.contains(refreshMinutes) { refreshMinutes = 5 }
+            if !Self.refreshIntervals.contains(refreshMinutes) { refreshMinutes = Self.defaultRefreshMinutes }
             defaults.set(refreshMinutes, forKey: "refreshMinutes")
         }
     }
@@ -35,9 +36,9 @@ final class AppSettings {
         self.defaults = defaults
         menuBarMode = MenuBarMode(rawValue: defaults.string(forKey: "menuBarMode") ?? "") ?? .separate
         showAccountNames = defaults.object(forKey: "showAccountNames") as? Bool ?? true
-        menuBarNumber = MenuBarNumber(rawValue: defaults.string(forKey: "menuBarNumber") ?? "") ?? .workingSessions
+        menuBarNumber = MenuBarNumber(rawValue: defaults.string(forKey: "menuBarNumber") ?? "") ?? .weeklyUsage
         let interval = defaults.integer(forKey: "refreshMinutes")
-        refreshMinutes = Self.refreshIntervals.contains(interval) ? interval : 5
+        refreshMinutes = Self.refreshIntervals.contains(interval) ? interval : Self.defaultRefreshMinutes
         hiddenAccountIDs = Set(defaults.stringArray(forKey: "hiddenAccountIDs") ?? [])
         accountOrder = defaults.stringArray(forKey: "accountOrder") ?? []
     }
