@@ -4,6 +4,11 @@ import AppKit
 @MainActor
 enum AgentBarApp {
     static func main() {
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        if arguments.contains(TerminalCommand.flag) {
+            Task { exit(await TerminalCommand.run(arguments)) }
+            dispatchMain()
+        }
         let options: LaunchOptions
         do {
             options = try LaunchOptions(arguments: CommandLine.arguments)

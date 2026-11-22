@@ -12,6 +12,7 @@ Codex account on this Mac.
 - **Menu bar**: one item per account or a single combined item, dimmed while it has no working
   session. An item shows its working sessions, its weekly usage, or no number. Accounts can be
   hidden, and dragged in Settings into the order of the items.
+- **Terminal**: the `agentbar` command prints the same accounts as cards of text.
 
 AgentBar reads account data without changing the config homes or the Keychain and never refreshes
 tokens. An account whose token has expired keeps showing its last known usage until that CLI runs
@@ -40,6 +41,20 @@ open build/AgentBar.app
 
 To keep it, copy `build/AgentBar.app` to `/Applications` and turn on "Launch at login" in its settings.
 
+## Terminal command
+
+Turn on "“agentbar” terminal command" in the settings. The app writes `/usr/local/bin/agentbar`, a
+script that runs the app's own program, and the system asks for an administrator's password where
+that folder needs one. Turning it off removes the script.
+
+```sh
+agentbar               # the accounts of the menu bar, in their order
+agentbar claude work   # Claude Code accounts whose name contains "work"
+agentbar --all         # with the accounts hidden in the settings
+```
+
+Usage read within the last minute is shown as it is; older usage is requested again.
+
 ## Development
 
 SwiftPM only, with no third-party package dependencies. `AgentBarCore` defines the provider contract
@@ -50,6 +65,7 @@ contains the app, and `AgentBarProbe` provides command-line diagnostics.
 swift test
 swift run AgentBar --demo
 swift run AgentBar --snapshot build/snapshots
+swift run AgentBar --terminal --demo
 swift run -c release agentbar-probe --offline
 ```
 

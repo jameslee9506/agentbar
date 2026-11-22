@@ -4,6 +4,7 @@ struct SettingsView: View {
     let store: AccountStore
     let settings: AppSettings
     let loginItem: LoginItemState
+    let commandLine: CommandLineToolState
     @State var selection: SettingsTab = .general
     var onSizeChange: ((CGSize) -> Void)?
 
@@ -16,7 +17,8 @@ struct SettingsView: View {
             .labelsHidden().pickerStyle(.segmented).frame(width: 220)
             switch selection {
             case .general:
-                GeneralSettingsView(settings: settings, loginItem: loginItem).padding(.horizontal, 16)
+                GeneralSettingsView(settings: settings, loginItem: loginItem, commandLine: commandLine)
+                    .padding(.horizontal, 16)
             case .accounts:
                 // Edge to edge, so its scroller is at the edge of the window.
                 AccountSettingsView(store: store, settings: settings)
@@ -32,9 +34,15 @@ struct SettingsView: View {
             }
         }
         .onPreferenceChange(SettingsWindowSizePreference.self) { onSizeChange?($0) }
-        .onAppear { loginItem.refresh() }
+        .onAppear { refresh() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            loginItem.refresh()
+            refresh()
         }
+    }
+
+    /// What the system keeps, which may have changed outside the app.
+    private func refresh() {
+        loginItem.refresh()
+        commandLine.refresh()
     }
 }

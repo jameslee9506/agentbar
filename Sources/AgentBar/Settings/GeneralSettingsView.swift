@@ -3,6 +3,7 @@ import SwiftUI
 struct GeneralSettingsView: View {
     @Bindable var settings: AppSettings
     let loginItem: LoginItemState
+    let commandLine: CommandLineToolState
 
     var body: some View {
         Form {
@@ -26,6 +27,14 @@ struct GeneralSettingsView: View {
             if loginItem.needsApproval {
                 Button("Allow in Login Items") { loginItem.openLoginSettings() }
                     .font(.callout)
+            }
+            Toggle("“agentbar” terminal command", isOn: Binding(
+                get: { commandLine.isInstalled }, set: { commandLine.setInstalled($0) }
+            ))
+            .disabled(!commandLine.isAvailable || commandLine.isChanging)
+            .help("Shows the accounts in a terminal. Installed as \(CommandLineTool.path).")
+            if let problem = commandLine.problem {
+                Text(problem).font(.callout).foregroundStyle(.secondary)
             }
         }
         .formStyle(.columns)

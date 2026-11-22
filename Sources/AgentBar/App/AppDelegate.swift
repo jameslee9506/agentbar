@@ -20,7 +20,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let defaults = defaultsName.flatMap(UserDefaults.init(suiteName:)) ?? .standard
         settings = AppSettings(defaults: defaults)
         store = AccountStore(providers: ProviderComposition.make(demo: options.demo))
-        windows = WindowCoordinator(store: store, settings: settings, loginItem: LoginItemState(preview: options.demo))
+        windows = WindowCoordinator(
+            store: store, settings: settings, loginItem: LoginItemState(preview: options.demo),
+            commandLine: CommandLineToolState(tool: options.demo ? nil : .bundled)
+        )
         scheduler = RefreshScheduler(store: store, settings: settings)
         super.init()
     }

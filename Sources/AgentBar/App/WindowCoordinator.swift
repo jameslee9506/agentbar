@@ -6,26 +6,30 @@ final class WindowCoordinator {
     private let store: AccountStore
     private let settings: AppSettings
     private let loginItem: LoginItemState
+    private let commandLine: CommandLineToolState
     private var settingsWindow: NSWindow?
     private var statisticsWindow: NSWindow?
 
-    init(store: AccountStore, settings: AppSettings, loginItem: LoginItemState) {
+    init(store: AccountStore, settings: AppSettings, loginItem: LoginItemState, commandLine: CommandLineToolState) {
         self.store = store
         self.settings = settings
         self.loginItem = loginItem
+        self.commandLine = commandLine
     }
 
     func showSettings() {
         if settingsWindow == nil {
             settingsWindow = makeWindow(
                 title: "AgentBar Settings", size: NSSize(width: 460, height: 220), resizable: false,
-                content: SettingsView(store: store, settings: settings, loginItem: loginItem, onSizeChange: { [weak self] size in
-                    self?.resizeSettings(to: size)
-                })
+                content: SettingsView(
+                    store: store, settings: settings, loginItem: loginItem, commandLine: commandLine,
+                    onSizeChange: { [weak self] size in self?.resizeSettings(to: size) }
+                )
             )
             if let size = settingsWindow?.contentView?.fittingSize { resizeSettings(to: size) }
         }
         loginItem.refresh()
+        commandLine.refresh()
         present(settingsWindow)
     }
 

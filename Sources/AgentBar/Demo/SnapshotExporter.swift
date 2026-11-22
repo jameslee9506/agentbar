@@ -46,13 +46,19 @@ struct SnapshotExporter {
             )
             for tab in [SettingsTab.general, .accounts] {
                 try await render(
-                    SettingsView(store: store, settings: settings, loginItem: LoginItemState(preview: true), selection: tab),
+                    SettingsView(
+                        store: store, settings: settings, loginItem: LoginItemState(preview: true),
+                        commandLine: CommandLineToolState(tool: nil), selection: tab
+                    ),
                     size: nil, dark: dark,
                     to: directory.appendingPathComponent("settings-\(tab == .general ? "general" : "accounts")-\(suffix).png")
                 )
                 for settingsCase in settingsCases {
                     try await render(
-                        SettingsView(store: settingsCase.store, settings: settings, loginItem: LoginItemState(preview: true), selection: tab),
+                        SettingsView(
+                            store: settingsCase.store, settings: settings, loginItem: LoginItemState(preview: true),
+                            commandLine: CommandLineToolState(tool: nil), selection: tab
+                        ),
                         size: nil, dark: dark,
                         to: directory.appendingPathComponent("settings-\(tab == .general ? "general" : "accounts")-\(settingsCase.count)-\(suffix).png")
                     )

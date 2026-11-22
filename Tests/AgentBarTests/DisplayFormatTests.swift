@@ -1,4 +1,5 @@
 @testable import AgentBar
+import AgentBarCore
 import Foundation
 import Testing
 
@@ -19,6 +20,20 @@ struct DisplayFormatTests {
         #expect(DisplayFormat.duration(93_600) == "1d 2h")
         #expect(DisplayFormat.reset(nil, now: TestFixtures.date) == "—")
         #expect(DisplayFormat.reset(TestFixtures.date, now: TestFixtures.date) == "Now")
+    }
+
+    @Test func sessionTimesAndTokenSummaries() {
+        let now = TestFixtures.date
+        let working = AgentSession(id: "a", state: .working, since: now.addingTimeInterval(-480))
+        #expect(DisplayFormat.sessionTime(working, now: now) == "8m")
+        #expect(DisplayFormat.sessionTime(AgentSession(id: "b", state: .working), now: now) == "Working")
+        #expect(DisplayFormat.sessionTime(AgentSession(id: "c", state: .idle, since: now), now: now) == "Idle")
+        let today = Calendar.current.startOfDay(for: now)
+        let statistics = UsageStatistics(days: [-7, -6, 0].map { offset in
+            DailyUsage(day: today.addingTimeInterval(Double(offset) * 86_400 + 3_600), byModel: ["test-model": TokenCount(input: 1_000)])
+        })
+        #expect(DisplayFormat.tokenSummary(statistics, now: now) == "Tokens  1K today · 2K in 7d")
+        #expect(DisplayFormat.tokenSummary(.empty, now: now) == "Tokens  0 today · 0 in 7d")
     }
 
     @Test func pathsPercentagesAndQuietErrors() {

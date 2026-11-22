@@ -18,8 +18,5 @@ struct SessionRow: View {
         .accessibilityLabel("\(DisplayFormat.directory(session.directory)), \(session.state.rawValue), \(duration)")
     }
 
-    private var duration: String {
-        guard session.state == .working else { return "Idle" }
-        return session.since.map { DisplayFormat.duration(now.timeIntervalSince($0)) } ?? "Working"
-    }
+    private var duration: String { DisplayFormat.sessionTime(session, now: now) }
 }

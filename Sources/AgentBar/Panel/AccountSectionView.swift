@@ -41,19 +41,10 @@ struct AccountSectionView: View {
                     }
                 }
             }
-            Text(tokenSummary)
+            Text(DisplayFormat.tokenSummary(state.statistics, now: now))
                 .font(.system(size: 10)).monospacedDigit().foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(12)
-    }
-
-    private var tokenSummary: String {
-        let today = Calendar.current.startOfDay(for: now)
-        let start = Calendar.current.date(byAdding: .day, value: -6, to: today) ?? today
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) ?? now
-        let todayTokens = state.statistics.days.filter { $0.day >= today && $0.day < tomorrow }.reduce(0) { $0 + $1.total.total }
-        let weekTokens = state.statistics.days.filter { $0.day >= start && $0.day < tomorrow }.reduce(0) { $0 + $1.total.total }
-        return "Tokens  \(DisplayFormat.tokens(todayTokens)) today · \(DisplayFormat.tokens(weekTokens)) in 7d"
     }
 }

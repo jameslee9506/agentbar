@@ -20,7 +20,8 @@ struct SettingsLayoutTests {
         var reportedSizes: [CGSize] = []
         let view = NSHostingView(rootView: SettingsView(
             store: store, settings: AppSettings(defaults: defaults), loginItem: LoginItemState(preview: true),
-            selection: .accounts, onSizeChange: { reportedSizes.append($0) }
+            commandLine: CommandLineToolState(tool: nil), selection: .accounts,
+            onSizeChange: { reportedSizes.append($0) }
         ))
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: view.fittingSize),
