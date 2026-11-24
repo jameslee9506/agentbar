@@ -24,7 +24,8 @@ struct TerminalDashboardTests {
         ])
         let text = TerminalDashboard(accounts: [state], now: now).text(width: 46, colors: false)
         #expect(text.components(separatedBy: "\n") == [
-            "╭─ Claude Code · alpha " + String(repeating: "─", count: 15) + " Test ─╮",
+            "Claude Code",
+            "╭─ alpha " + String(repeating: "─", count: 29) + " Test ─╮",
             "│ 5h   " + bar(6, of: 15) + "  43%  resets in 2h 8m │",
             "│ Week " + bar(10, of: 15) + "  68%  resets in 3d    │",
             "│ ● project" + spaces(31) + "8m │",
@@ -68,7 +69,7 @@ struct TerminalDashboardTests {
         for width in [46, 94, 143, 200] {
             let lines = dashboard.lines(width: width)
             #expect(lines.allSatisfy { $0.width <= width })
-            #expect(Set(lines.prefix(4).map(\.width)).count == 1)
+            #expect(Set(lines[1...4].map(\.width)).count == 1)
         }
         #expect(TerminalDashboard(accounts: [], now: now).lines(width: 80).isEmpty)
     }
@@ -79,15 +80,19 @@ struct TerminalDashboardTests {
         let narrow = dashboard.lines(width: 30)
         #expect(!narrow.contains { $0.string(colors: false).contains("resets") })
         #expect(narrow.contains { $0.string(colors: false).contains("43% │") })
-        #expect(narrow.allSatisfy { $0.width == 30 })
+        #expect(narrow.dropFirst().allSatisfy { $0.width == 30 })
     }
 
     @Test func colorsMarkHighUsageAndWorkingSessionsOnlyWhenAsked() {
         var working = state("alpha", percent: 72)
         working.activity = TestFixtures.activity(.working)
         let dashboard = TerminalDashboard(accounts: [working, state("beta", percent: 95), state("gamma", percent: 10)], now: now)
-        #expect(!dashboard.text(width: 46, colors: false).contains("\u{1B}"))
+        let plain = dashboard.text(width: 46, colors: false)
+        #expect(!plain.contains("\u{1B}"))
+        // The unused part of a bar is dim, and without colors a line of its own.
+        #expect(plain.contains(" " + bar(16, of: 17) + "  95% "))
         let colored = dashboard.text(width: 46, colors: true)
+        #expect(colored.contains("\u{1B}[31m" + String(repeating: "▆", count: 16) + "\u{1B}[0m\u{1B}[2m▆\u{1B}[0m"))
         #expect(colored.contains("\u{1B}[33m72%\u{1B}[0m"))
         #expect(colored.contains("\u{1B}[31m95%\u{1B}[0m"))
         #expect(colored.contains(" 10%"))
@@ -111,21 +116,44 @@ struct TerminalDashboardTests {
         let text = lines.map { $0.string(colors: true) }.joined(separator: "\n")
         #expect(text.unicodeScalars.allSatisfy { $0.properties.generalCategory != .control || $0 == "\n" || $0 == "\u{1B}" })
         #expect(!text.contains("\u{1B}[2J"))
-        #expect(lines.count == 6)
-        #expect(lines.allSatisfy { $0.width == 46 })
+        #expect(lines.count == 7)
+        #expect(lines.dropFirst().allSatisfy { $0.width == 46 })
         #expect(text.contains("메모장 👍"))
-        #expect(lines[3].string(colors: false).hasSuffix("x…  Idle │"))
+        #expect(lines[4].string(colors: false).hasSuffix("x…  Idle │"))
     }
 
-    private func state(_ name: String, percent: Double) -> AccountState {
-        var state = AccountState(account: TestFixtures.account(name))
+    @Test func accountsAreGroupedUnderTheirProvider() {
+        // Each provider where its first account is, with its accounts in the order given.
+        let dashboard = TerminalDashboard(accounts: [
+            state("beta", percent: 10), state("codex", percent: 20, kind: .codex), state("alpha", percent: 30),
+        ], now: now)
+        let text = dashboard.lines(width: 200).map { $0.string(colors: false) }
+        #expect(text.filter { !"╭│╰".contains($0.first ?? " ") } == ["Claude Code", "", "Codex"])
+        let titles = text.filter { $0.hasPrefix("╭") }
+        #expect(titles.count == 2)
+        #expect(titles[0].hasPrefix("╭─ beta ") && titles[0].contains("╮  ╭─ alpha "))
+        #expect(titles[1].hasPrefix("╭─ codex "))
+        // A provider with fewer cards has cards as wide as the others.
+        func bottoms(_ width: Int) -> [Int] {
+            dashboard.lines(width: width).filter { $0.string(colors: false).hasPrefix("╰") }.map(\.width)
+        }
+        #expect(bottoms(200) == [58 + 2 + 58, 58])
+        #expect(bottoms(100) == [49 + 2 + 49, 49])
+        let colored = dashboard.text(width: 200, colors: true)
+        #expect(colored.hasPrefix("\u{1B}[1;38;5;173mClaude Code\u{1B}[0m\n"))
+        #expect(colored.contains("\n\n\u{1B}[1mCodex\u{1B}[0m\n"))
+    }
+
+    private func state(_ name: String, percent: Double, kind: ProviderKind = .claude) -> AccountState {
+        var state = AccountState(account: TestFixtures.account(name, kind: kind))
         state.usage = TestFixtures.snapshot(percent, at: now, reset: now.addingTimeInterval(7_680))
         state.lastSuccessfulRefresh = now
         return state
     }
 
+    /// A bar as it reads without colors.
     private func bar(_ filled: Int, of width: Int) -> String {
-        String(repeating: "━", count: filled) + String(repeating: "─", count: width - filled)
+        String(repeating: "▆", count: filled) + String(repeating: "▁", count: width - filled)
     }
 
     private func spaces(_ count: Int) -> String { String(repeating: " ", count: count) }
@@ -140,13 +168,21 @@ struct TerminalLineTests {
         #expect("e\u{301}".terminalWidth == 1)
         #expect("👍".terminalWidth == 2)
         #expect("❤\u{FE0F}".terminalWidth == 2)
-        #expect("━─●○│╭".terminalWidth == 6)
+        #expect("▆▁─●○│╭".terminalWidth == 7)
         var line = TerminalLine("메모", .bold)
         line.pad(to: 6)
         line.append("x")
         #expect(line.width == 7)
         #expect(line.string(colors: false) == "메모  x")
         #expect(line.string(colors: true) == "\u{1B}[1m메모\u{1B}[0m  x")
+    }
+
+    @Test func textThatOnlyItsStyleSetsApartHasAnotherWithoutColors() {
+        var line = TerminalLine("▆▆")
+        line.append("▆▆▆", .dim, uncolored: "▁▁▁")
+        #expect(line.width == 5)
+        #expect(line.string(colors: true) == "▆▆\u{1B}[2m▆▆▆\u{1B}[0m")
+        #expect(line.string(colors: false) == "▆▆▁▁▁")
     }
 
     @Test func longTextEndsInAnEllipsisWithinItsCells() {

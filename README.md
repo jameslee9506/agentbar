@@ -12,7 +12,7 @@ Codex account on this Mac.
 - **Menu bar**: one item per account or a single combined item, dimmed while it has no working
   session. An item shows its working sessions, its weekly usage, or no number. Accounts can be
   hidden, and dragged in Settings into the order of the items.
-- **Terminal**: the `agentbar` command prints the same accounts as cards of text.
+- **Terminal**: the `agentbar` command prints the same accounts as cards of text, by provider.
 
 AgentBar reads account data without changing the config homes or the Keychain and never refreshes
 tokens. An account whose token has expired keeps showing its last known usage until that CLI runs
@@ -48,7 +48,7 @@ script that runs the app's own program, and the system asks for an administrator
 that folder needs one. Turning it off removes the script.
 
 ```sh
-agentbar               # the accounts of the menu bar, in their order
+agentbar               # the accounts of the menu bar by provider, in their order
 agentbar claude work   # Claude Code accounts whose name contains "work"
 agentbar --all         # with the accounts hidden in the settings
 ```

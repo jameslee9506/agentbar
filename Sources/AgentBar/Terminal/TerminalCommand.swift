@@ -14,7 +14,7 @@ struct TerminalCommand: Equatable {
         \(usage)
 
         Shows the usage, sessions, and tokens of the Claude Code and Codex accounts
-        on this Mac, in the order arranged in AgentBar's settings.
+        on this Mac by provider, in the order arranged in AgentBar's settings.
 
           claude, codex   Only the accounts of that provider
           name            Only the accounts whose name contains it

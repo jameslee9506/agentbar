@@ -1,7 +1,8 @@
 import AgentBarCore
 import Foundation
 
-/// The accounts as the panel shows them, drawn as cards of text for a terminal.
+/// The accounts as the panel shows them, drawn as cards of text for a terminal under the name of
+/// their provider.
 struct TerminalDashboard {
     let accounts: [AccountState]
     let now: Date
@@ -16,13 +17,40 @@ struct TerminalDashboard {
     }
 
     func lines(width: Int) -> [TerminalLine] {
-        guard !accounts.isEmpty else { return [] }
+        let groups = providerGroups
         // As many cards in a row as fit, then as few as fill the same number of rows.
         let fitting = max(1, (width + Self.gap) / (Self.cardWidths.lowerBound + Self.gap))
-        let rows = (accounts.count + fitting - 1) / fitting
-        let columns = (accounts.count + rows - 1) / rows
-        let layout = layout(card: max(24, min(Self.cardWidths.upperBound, (width - Self.gap * (columns - 1)) / columns)))
-        let cards = accounts.map { card($0, layout) }
+        let columns = groups.map { group in
+            let rows = (group.count + fitting - 1) / fitting
+            return (group.count + rows - 1) / rows
+        }
+        guard let widest = columns.max() else { return [] }
+        // The cards of every provider are as wide, so that they line up.
+        let layout = layout(card: max(24, min(Self.cardWidths.upperBound, (width - Self.gap * (widest - 1)) / widest)))
+        var lines: [TerminalLine] = []
+        for (group, columns) in zip(groups, columns) {
+            let provider = group[0].id.provider
+            if !lines.isEmpty { lines.append(TerminalLine()) }
+            lines.append(TerminalLine(provider.displayName, provider == .claude ? .claude : .bold))
+            lines += rows(of: group.map { card($0, layout) }, columns: columns)
+        }
+        return lines
+    }
+
+    /// The accounts of each provider in their order, each provider where its first account is.
+    private var providerGroups: [[AccountState]] {
+        var groups: [[AccountState]] = []
+        for state in accounts {
+            if let index = groups.firstIndex(where: { $0[0].id.provider == state.id.provider }) {
+                groups[index].append(state)
+            } else {
+                groups.append([state])
+            }
+        }
+        return groups
+    }
+
+    private func rows(of cards: [Card], columns: Int) -> [TerminalLine] {
         var lines: [TerminalLine] = []
         for start in stride(from: 0, to: cards.count, by: columns) {
             let row = cards[start..<min(start + columns, cards.count)]
@@ -99,17 +127,14 @@ struct TerminalDashboard {
         return Card(top: title(state, width: layout.card), rows: rows, footer: TerminalLine(tokens, .dim), width: layout.card)
     }
 
-    /// The top border, with the provider and the account's name in it and the plan at its end.
+    /// The top border, with the account's name in it and the plan at its end.
     private func title(_ state: AccountState, width: Int) -> TerminalLine {
-        let provider = state.id.provider
         let name = state.account.name.terminalSafe
         let plan = state.account.plan?.terminalSafe ?? ""
-        // What the corners, the separator, and one cell of border at least leave for the name.
-        let room = width - provider.displayName.count - 10
+        // What the corners and one cell of border at least leave for the name.
+        let room = width - 7
         let showsPlan = !plan.isEmpty && name.terminalWidth + plan.terminalWidth + 2 <= room
         var line = TerminalLine("╭─ ", .dim)
-        line.append(provider.displayName, provider == .claude ? .claude : .bold)
-        line.append(" · ", .dim)
         line.append(name.terminalTruncated(to: room - (showsPlan ? plan.terminalWidth + 2 : 0)), .bold)
         line.append(" ")
         let end = showsPlan ? " \(plan) ─╮" : "─╮"
@@ -125,8 +150,11 @@ struct TerminalDashboard {
         let percent = DisplayFormat.percent(window.usedPercent)
         var line = TerminalLine(window.title.terminalSafe.terminalTruncated(to: layout.title))
         line.pad(to: layout.title + 1)
-        line.append(String(repeating: "━", count: filled), level)
-        line.append(String(repeating: "─", count: layout.bar - filled), .dim)
+        // Blocks three quarters of a line high, so that the bars of adjacent rows stay apart. Without
+        // colors the unused part is a line along their bottom.
+        line.append(String(repeating: "▆", count: filled), level)
+        line.append(String(repeating: "▆", count: layout.bar - filled), .dim,
+                    uncolored: String(repeating: "▁", count: layout.bar - filled))
         line.pad(to: layout.title + layout.bar + 6 - percent.count)
         line.append(percent, level)
         if layout.reset > 0 { line.append("  " + resetText(window), .dim) }

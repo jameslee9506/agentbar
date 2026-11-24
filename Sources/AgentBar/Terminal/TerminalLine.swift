@@ -19,6 +19,7 @@ struct TerminalLine: Equatable {
     private struct Run: Equatable {
         let text: String
         let style: TerminalStyle
+        let uncolored: String
     }
 
     private var runs: [Run] = []
@@ -30,10 +31,11 @@ struct TerminalLine: Equatable {
         append(text, style)
     }
 
-    mutating func append(_ text: String, _ style: TerminalStyle = .plain) {
+    /// `uncolored`, in as many cells, stands in for text that only its style sets apart where colors are off.
+    mutating func append(_ text: String, _ style: TerminalStyle = .plain, uncolored: String? = nil) {
         let text = text.terminalSafe
         guard !text.isEmpty else { return }
-        runs.append(Run(text: text, style: style))
+        runs.append(Run(text: text, style: style, uncolored: uncolored?.terminalSafe ?? text))
         width += text.terminalWidth
     }
 
@@ -49,7 +51,8 @@ struct TerminalLine: Equatable {
 
     func string(colors: Bool) -> String {
         runs.map { run in
-            colors && run.style != .plain ? "\u{1B}[\(run.style.parameters)m\(run.text)\u{1B}[0m" : run.text
+            guard colors else { return run.uncolored }
+            return run.style == .plain ? run.text : "\u{1B}[\(run.style.parameters)m\(run.text)\u{1B}[0m"
         }.joined()
     }
 }
