@@ -13,7 +13,7 @@ struct CodexUsageConcurrencyTests {
         let processes = BlockingProcesses()
         defer { processes.release() }
         let transport = FakeCodexTransport()
-        let service = CodexUsageService(transport: transport, clock: { CodexFixture.date }, cache: DiskCache(directory: fixture.cache), rollouts: CodexRolloutUsage(), processes: processes)
+        let service = CodexUsageService(transport: transport, renewal: FakeCodexRenewal(), clock: { CodexFixture.date }, cache: DiskCache(directory: fixture.cache), rollouts: CodexRolloutUsage(), processes: processes)
         let cached = Task { await service.cachedUsage(for: fixture.account(home)) }
         let alsoCached = Task { await service.cachedUsage(for: fixture.account(home)) }
         let startDeadline = ContinuousClock.now.advanced(by: .seconds(1))

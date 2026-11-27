@@ -11,11 +11,14 @@ public struct ClaudeProvider: AccountProvider {
 
     public init() {
         let root = FileManager.default.homeDirectoryForCurrentUser
+        let store = CredentialStore(defaultHome: root.appendingPathComponent(".claude"))
+        let transport = UsageTransport()
         self.init(
             homeRoot: root,
             processes: SystemProcessInspector(),
-            credentials: KeychainCredentialReader(defaultHome: root.appendingPathComponent(".claude")),
-            transport: UsageTransport(),
+            credentials: store,
+            renewal: LoginRenewal(store: store, transport: transport, clock: { Date() }),
+            transport: transport,
             clock: { Date() },
             cacheDirectory: DiskCache.defaultDirectory
         )
@@ -25,6 +28,7 @@ public struct ClaudeProvider: AccountProvider {
         homeRoot: URL,
         processes: any ProcessListing,
         credentials: any CredentialReading,
+        renewal: any CredentialRenewing,
         transport: any UsageTransporting,
         clock: @escaping @Sendable () -> Date,
         cacheDirectory: URL,
@@ -33,7 +37,7 @@ public struct ClaudeProvider: AccountProvider {
     ) {
         let cache = DiskCache(directory: cacheDirectory)
         discovery = AccountDiscovery(root: homeRoot, credentials: credentials)
-        usageService = UsageService(credentials: credentials, transport: transport, clock: clock, cache: cache)
+        usageService = UsageService(credentials: credentials, renewal: renewal, transport: transport, clock: clock, cache: cache)
         sessions = SessionMonitor(root: homeRoot, processes: processes, pollInterval: pollInterval)
         statisticsStore = StatisticsStore(cache: cache, clock: clock, calendar: calendar)
     }

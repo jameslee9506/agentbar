@@ -39,7 +39,7 @@ struct UsageTests {
         #expect(response.windows.first?.usedPercent == 100)
     }
 
-    @Test func missingAndExpiredCredentialsNeverCallNetwork() async throws {
+    @Test func missingAndUnrenewableCredentialsNeverCallNetwork() async throws {
         let space = try TestSpace()
         let account = try space.account()
         for (credential, expected) in [(nil, UsageError.signedOut), (testCredential(expired: true), .sessionExpired)] {
@@ -162,7 +162,8 @@ struct UsageTests {
 
     private func service(_ space: TestSpace, credentials: any CredentialReading = TestCredentials([testCredential()]),
                          transport: any UsageTransporting = TestTransport()) -> UsageService {
-        UsageService(credentials: credentials, transport: transport, clock: { testNow }, cache: DiskCache(directory: space.cache))
+        UsageService(credentials: credentials, renewal: TestRenewal(), transport: transport, clock: { testNow },
+                     cache: DiskCache(directory: space.cache))
     }
 
     private func expectError(_ expected: UsageError, service: UsageService, account: Account) async {

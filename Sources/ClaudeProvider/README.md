@@ -7,11 +7,24 @@ is `~/.claude.json`; custom identity is `<home>/.claude.json`.
 Credentials come from captured `/usr/bin/security find-generic-password` output,
 then `<home>/.credentials.json`. The default service is `Claude Code-credentials`;
 custom services append `-` and the first eight lowercase SHA-256 hex characters
-of the absolute home path. Custom homes never try the default service.
-Only access-token, expiry, and plan fields are decoded. Credentials are not cached.
+of the absolute home path. Custom homes never try the default service. The Keychain
+account is the CLI's: `USER`, or `claude-code-user` when it has other characters.
+Reading decodes only access-token, expiry, and plan fields. Credentials are not cached.
 Usage uses `GET https://api.anthropic.com/api/oauth/usage`. Credentials are reread
-for every fetch. Local expiry skips HTTP; 401 permits one retry only with a changed,
-unexpired token. No token refresh is performed. 429 returns the Retry-After delay.
+for every fetch. An expired login is renewed first. 401 permits one retry: with a
+changed, unexpired token, or else after one renewal. 429 returns the Retry-After delay.
+
+Renewal follows the CLI, because the service replaces the refresh token each time.
+It holds the CLI's locks, the directories `<home>/.oauth_refresh.lock` and
+`<resolved home>.lock`, which count as abandoned after 60 seconds; a held lock is
+waited for five times. It posts the refresh token with the stored scopes and client
+to `https://platform.claude.com/v1/oauth/token`, then saves the new tokens into the
+same document, in the same place, keeping every other field. The Keychain item is
+written by `security -i` over standard input. A login renewed elsewhere meanwhile is
+adopted, and a different refresh token in the store is never overwritten.
+`invalid_grant` means the sign-in has ended: that token is not sent again. Any other
+failure leaves the login as it was. Tokens the store would not take stay in memory
+and are saved before the next attempt.
 Absent windows remain absent; `is_active` does not suppress a quota.
 Usage caching requires an account UUID. Startup selects the newer successful
 DiskCache snapshot or UUID-matched `cachedUsageUtilization`, keeping its fetch time.

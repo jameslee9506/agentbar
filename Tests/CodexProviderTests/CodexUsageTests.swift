@@ -16,7 +16,7 @@ struct CodexUsageTests {
             ]], at: CodexFixture.date.addingTimeInterval(20)),
         ])
         let cache = DiskCache(directory: fixture.cache)
-        let service = CodexUsageService(transport: FakeCodexTransport(), clock: { CodexFixture.date.addingTimeInterval(30) }, cache: cache, rollouts: CodexRolloutUsage(), processes: FakeCodexProcesses())
+        let service = CodexUsageService(transport: FakeCodexTransport(), renewal: FakeCodexRenewal(), clock: { CodexFixture.date.addingTimeInterval(30) }, cache: cache, rollouts: CodexRolloutUsage(), processes: FakeCodexProcesses())
         let credential = try #require(CodexCredential.read(home: home))
         let disk = UsageSnapshot(windows: [UsageWindow(id: "weekly", title: "Week", usedPercent: 70)], capturedAt: CodexFixture.date.addingTimeInterval(10))
         try cache.save(disk, key: await service.cacheKey(home: home, identity: credential.identity))
@@ -60,13 +60,83 @@ struct CodexUsageTests {
         #expect(await transport.calls == 1)
     }
 
-    @Test func localExpiryAvoidsNetwork() async throws {
+    @Test func unrenewedExpiryAvoidsNetworkAndIsNotRetriedAtOnce() async throws {
         let fixture = try CodexFixture()
         let home = try fixture.home()
         try fixture.auth(home, expiry: CodexFixture.date)
         let transport = FakeCodexTransport()
-        await #expect(throws: UsageError.sessionExpired) { try await fixture.provider(transport: transport).usage(for: fixture.account(home)) }
+        let renewal = FakeCodexRenewal()
+        let provider = fixture.provider(transport: transport, renewal: renewal)
+        for _ in 0..<2 {
+            await #expect(throws: UsageError.sessionExpired) { try await provider.usage(for: fixture.account(home)) }
+        }
         #expect(await transport.calls == 0)
+        #expect(await renewal.calls == 1)
+    }
+
+    @Test func expiredLoginIsRenewedByTheCLI() async throws {
+        let fixture = try CodexFixture()
+        let home = try fixture.home()
+        try fixture.auth(home, expiry: CodexFixture.date)
+        let stale = try #require(CodexCredential.read(home: home))
+        let transport = FakeCodexTransport()
+        let renewal = FakeCodexRenewal { try? fixture.auth($0) }
+        let snapshot = try await fixture.provider(transport: transport, renewal: renewal).usage(for: fixture.account(home))
+        #expect(snapshot.windows.first?.usedPercent == 25)
+        #expect(await renewal.calls == 1)
+        let renewed = try #require(CodexCredential.read(home: home))
+        #expect(renewed.accessToken != stale.accessToken)
+        #expect(await transport.tokens == ["Bearer " + renewed.accessToken])
+    }
+
+    @Test func unauthorizedLoginIsRenewedOnce() async throws {
+        let fixture = try CodexFixture()
+        let home = try fixture.home()
+        try fixture.auth(home)
+        let transport = FakeCodexTransport(first: [401])
+        let renewal = FakeCodexRenewal { try? fixture.auth($0, expiry: CodexFixture.date.addingTimeInterval(172_800)) }
+        let snapshot = try await fixture.provider(transport: transport, renewal: renewal).usage(for: fixture.account(home))
+        #expect(snapshot.windows.first?.usedPercent == 25)
+        #expect(await renewal.calls == 1)
+        #expect(Set(await transport.tokens).count == 2)
+
+        let refused = FakeCodexTransport(status: 401)
+        let again = FakeCodexRenewal { try? fixture.auth($0, expiry: CodexFixture.date.addingTimeInterval(259_200)) }
+        await #expect(throws: UsageError.sessionExpired) {
+            try await fixture.provider(transport: refused, renewal: again).usage(for: fixture.account(home))
+        }
+        #expect(await refused.calls == 2)
+        #expect(await again.calls == 1)
+    }
+
+    @Test func renewalAsksTheAppServerOfTheHome() async throws {
+        let fixture = try CodexFixture()
+        let home = try fixture.home()
+        let cli = try fixture.executable("""
+        #!/bin/sh
+        printf '%s' "$*" > "$CODEX_HOME/arguments"
+        while IFS= read -r line; do
+          printf '%s\n' "$line" >> "$CODEX_HOME/requests"
+          case "$line" in
+            *'"id":1'*) printf '{"id":1,"result":{}}\n' ;;
+            *'"id":2'*) printf '{"method":"account/updated","params":{}}\n{"id":2,"result":{}}\n' ;;
+          esac
+        done
+        """)
+        await CodexLoginRenewal(executable: cli, timeout: .seconds(20)).renew(home: home)
+        #expect(try String(contentsOf: home.appendingPathComponent("arguments"), encoding: .utf8) == "app-server")
+        let requests = try String(contentsOf: home.appendingPathComponent("requests"), encoding: .utf8)
+            .split(separator: "\n").map { try JSONSerialization.jsonObject(with: Data($0.utf8)) as? [String: Any] }
+        #expect(requests.map { $0?["method"] as? String } == ["initialize", "initialized", "account/read"])
+        #expect((requests.last??["params"] as? [String: Any])?["refreshToken"] as? Bool == true)
+    }
+
+    @Test func renewalGivesUpOnASilentAppServer() async throws {
+        let fixture = try CodexFixture()
+        let cli = try fixture.executable("#!/bin/sh\nexec sleep 30\n")
+        let started = Date()
+        await CodexLoginRenewal(executable: cli, timeout: .milliseconds(200)).renew(home: try fixture.home())
+        #expect(Date().timeIntervalSince(started) < 10)
     }
 
     @Test(arguments: [401, 403, 429, 500])
@@ -104,7 +174,7 @@ struct CodexUsageTests {
         let account = fixture.account(home)
         let rollouts = CodexRolloutUsage()
         let cache = DiskCache(directory: fixture.cache)
-        let service = CodexUsageService(transport: FakeCodexTransport(), clock: { CodexFixture.date }, cache: cache, rollouts: rollouts, processes: FakeCodexProcesses())
+        let service = CodexUsageService(transport: FakeCodexTransport(), renewal: FakeCodexRenewal(), clock: { CodexFixture.date }, cache: cache, rollouts: rollouts, processes: FakeCodexProcesses())
         let credential = try #require(CodexCredential.read(home: home))
         let key = await service.cacheKey(home: home, identity: credential.identity)
         let disk = UsageSnapshot(windows: [UsageWindow(id: "weekly", title: "Week", usedPercent: 20)], capturedAt: CodexFixture.date.addingTimeInterval(-10))
@@ -136,7 +206,7 @@ struct CodexUsageTests {
         #expect(await fixture.provider().cachedUsage(for: account)?.windows.first?.usedPercent == 31)
         let rollouts = CodexRolloutUsage()
         let cache = DiskCache(directory: fixture.cache)
-        let service = CodexUsageService(transport: FakeCodexTransport(), clock: { CodexFixture.date.addingTimeInterval(20) }, cache: cache, rollouts: rollouts, processes: FakeCodexProcesses())
+        let service = CodexUsageService(transport: FakeCodexTransport(), renewal: FakeCodexRenewal(), clock: { CodexFixture.date.addingTimeInterval(20) }, cache: cache, rollouts: rollouts, processes: FakeCodexProcesses())
         let credential = try #require(CodexCredential.read(home: home))
         let key = await service.cacheKey(home: home, identity: credential.identity)
         let later = UsageSnapshot(windows: [UsageWindow(id: "weekly", title: "Week", usedPercent: 45)], capturedAt: CodexFixture.date.addingTimeInterval(10))

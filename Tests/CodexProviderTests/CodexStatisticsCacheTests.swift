@@ -109,7 +109,7 @@ struct CodexStatisticsCacheTests {
         second.timeZone = TimeZone(secondsFromGMT: 9 * 3600)!
         let account = fixture.account(home)
         let calendar = CalendarSource(first)
-        let provider = CodexProvider(homeRoot: fixture.root, processes: FakeCodexProcesses(), transport: FakeCodexTransport(), clock: { CodexFixture.date }, cacheDirectory: fixture.cache, currentCalendar: { calendar.get() })
+        let provider = CodexProvider(homeRoot: fixture.root, processes: FakeCodexProcesses(), transport: FakeCodexTransport(), renewal: FakeCodexRenewal(), clock: { CodexFixture.date }, cacheDirectory: fixture.cache, currentCalendar: { calendar.get() })
         let original = await provider.statistics(for: account, days: 7)
         #expect(original.total.total == 120)
         #expect(original.days.first?.day == first.startOfDay(for: CodexFixture.date))

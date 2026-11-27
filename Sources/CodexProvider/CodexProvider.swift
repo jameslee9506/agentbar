@@ -16,6 +16,7 @@ public struct CodexProvider: AccountProvider {
             homeRoot: FileManager.default.homeDirectoryForCurrentUser,
             processes: SystemProcessInspector(),
             transport: CodexHTTPTransport(),
+            renewal: CodexLoginRenewal(),
             clock: { Date() },
             cacheDirectory: DiskCache().directory
         )
@@ -25,6 +26,7 @@ public struct CodexProvider: AccountProvider {
         homeRoot: URL,
         processes: any ProcessListing,
         transport: any CodexUsageTransport,
+        renewal: any CodexLoginRenewing,
         clock: @escaping @Sendable () -> Date,
         cacheDirectory: URL,
         calendar: Calendar? = nil,
@@ -34,7 +36,7 @@ public struct CodexProvider: AccountProvider {
         let cache = DiskCache(directory: cacheDirectory)
         let rolloutUsage = CodexRolloutUsage()
         discovery = CodexAccounts(root: homeRoot)
-        usageService = CodexUsageService(transport: transport, clock: clock, cache: cache, rollouts: rolloutUsage, processes: processes)
+        usageService = CodexUsageService(transport: transport, renewal: renewal, clock: clock, cache: cache, rollouts: rolloutUsage, processes: processes)
         statisticsService = CodexStatisticsService(cache: cache, clock: clock, calendar: { calendar ?? currentCalendar() }, rollouts: rolloutUsage)
         self.processes = processes
         self.rolloutUsage = rolloutUsage

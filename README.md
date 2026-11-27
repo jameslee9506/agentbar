@@ -14,19 +14,21 @@ Codex account on this Mac.
   hidden, and dragged in Settings into the order of the items.
 - **Terminal**: the `agentbar` command prints the same accounts as cards of text, by provider.
 
-AgentBar reads account data without changing the config homes or the Keychain and never refreshes
-tokens. An account whose token has expired keeps showing its last known usage until that CLI runs
-again. Usage and statistics caches stay in `~/Library/Caches/AgentBar`; credentials are not cached.
-There is no telemetry. Network requests send the local access token only to its provider's usage
-endpoint; redirects are blocked.
+AgentBar reads account data and changes one thing: a login whose access token has expired is
+renewed, so that an account that has not run for a while still shows its usage. A Claude Code login
+is renewed the way its CLI does it and saved where the CLI keeps it, in the Keychain or the config
+home; a Codex login is renewed by the Codex CLI itself. "Sign-in expired" means the account has to
+sign in again. Usage and statistics caches stay in `~/Library/Caches/AgentBar`; credentials are not
+cached. There is no telemetry. Network requests send an access token only to its provider's usage
+endpoint and a refresh token only to its provider's token endpoint; redirects are blocked.
 
 This is an independent project, not affiliated with or endorsed by Anthropic or OpenAI.
 
 ## Provider compatibility
 
-Live usage calls provider-specific OAuth endpoints. Their availability and permitted use depend on
-the providers' policies. Anthropic restricts third-party use of subscription credentials; permission
-for this usage-monitoring integration has not been established. See its
+Live usage and login renewal call provider-specific OAuth endpoints. Their availability and permitted
+use depend on the providers' policies. Anthropic restricts third-party use of subscription
+credentials; permission for this usage-monitoring integration has not been established. See its
 [credential-use policy](https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use).
 The MIT license does not grant access to provider services or permission to use their trademarks.
 

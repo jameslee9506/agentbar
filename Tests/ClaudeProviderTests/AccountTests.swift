@@ -47,12 +47,12 @@ struct AccountTests {
         let space = try TestSpace()
         let standard = try space.account()
         let work = try space.account(".claude-work")
-        #expect(KeychainCredentialReader.service(for: standard.home, defaultHome: standard.home) == "Claude Code-credentials")
+        #expect(CredentialStore.service(for: standard.home, defaultHome: standard.home) == "Claude Code-credentials")
         let digest = SHA256.hash(data: Data(work.home.path.utf8)).map { String(format: "%02x", $0) }.joined()
         let expected = "Claude Code-credentials-" + digest.prefix(8)
-        #expect(KeychainCredentialReader.service(for: work.home, defaultHome: standard.home) == expected)
+        #expect(CredentialStore.service(for: work.home, defaultHome: standard.home) == expected)
         let requested = ServiceRecorder()
-        let reader = KeychainCredentialReader(defaultHome: standard.home, readService: { service in
+        let reader = CredentialStore(defaultHome: standard.home, readService: { service in
             await requested.record(service)
             return nil
         })
@@ -63,7 +63,7 @@ struct AccountTests {
         let credential = await reader.read(for: work.home)
         #expect(credential?.accessToken == "synthetic-file-token")
         #expect(credential?.expiration == Date(timeIntervalSince1970: 1_900_000_000))
-        let preferred = KeychainCredentialReader(defaultHome: standard.home, readService: { _ in
+        let preferred = CredentialStore(defaultHome: standard.home, readService: { _ in
             Data("{\"claudeAiOauth\":{\"accessToken\":\"synthetic-keychain-token\"}}".utf8)
         })
         #expect(await preferred.read(for: work.home)?.accessToken == "synthetic-keychain-token")

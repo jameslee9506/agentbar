@@ -66,6 +66,35 @@ actor TestCredentials: CredentialReading {
     }
 }
 
+/// Refuses every renewal, as the service does for a sign-in that has ended.
+struct TestRenewal: CredentialRenewing {
+    func renew(_ stale: OAuthCredential, for home: URL) async -> CredentialRenewal { .rejected }
+}
+
+/// A Keychain in memory: one document per service.
+actor TestKeychain {
+    private(set) var items: [String: Data] = [:]
+    private(set) var writes = 0
+    private var scripted: [Data] = []
+    private var failures = 0
+
+    func set(_ document: Data, service: String) { items[service] = document }
+    /// Answers the next reads with these documents, before the stored items.
+    func script(_ documents: [Data]) { scripted = documents }
+    func failWrites(_ count: Int) { failures = count }
+
+    func read(_ service: String) -> Data? {
+        scripted.isEmpty ? items[service] : scripted.removeFirst()
+    }
+
+    func write(_ service: String, _ document: Data) -> Bool {
+        guard failures == 0 else { failures -= 1; return false }
+        writes += 1
+        items[service] = document
+        return true
+    }
+}
+
 struct HomeCredentials: CredentialReading {
     let values: [String: OAuthCredential]
     func read(for home: URL) async -> OAuthCredential? { values[home.lastPathComponent] }

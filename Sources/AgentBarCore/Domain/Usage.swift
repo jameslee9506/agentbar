@@ -51,7 +51,7 @@ public struct UsageSnapshot: Hashable, Codable, Sendable {
 public enum UsageError: Error, Hashable, Sendable {
     /// The config home has no credentials.
     case signedOut
-    /// The stored access token expired. The CLI renews it the next time it runs.
+    /// The sign-in ended and could not be renewed: the account has to sign in again.
     case sessionExpired
     /// The service asked to slow down; do not retry before the interval passes.
     case rateLimited(retryAfter: TimeInterval?)

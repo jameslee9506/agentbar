@@ -46,12 +46,19 @@ final class CodexFixture: Sendable {
         try FileManager.default.setAttributes([.modificationDate: Self.date.addingTimeInterval(-1000)], ofItemAtPath: home.appendingPathComponent("auth.json").path)
     }
 
+    func executable(_ script: String) throws -> URL {
+        let file = root.appendingPathComponent("codex-" + UUID().uuidString)
+        try Data(script.utf8).write(to: file)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file.path)
+        return file
+    }
+
     func account(_ home: URL) -> Account {
         Account(id: AccountID(provider: .codex, home: home.lastPathComponent), name: "example", home: home)
     }
 
-    func provider(processes: FakeCodexProcesses = FakeCodexProcesses(), transport: FakeCodexTransport = FakeCodexTransport(), calendar: Calendar = .current) -> CodexProvider {
-        CodexProvider(homeRoot: root, processes: processes, transport: transport, clock: { Self.date }, cacheDirectory: cache, calendar: calendar, pollInterval: .milliseconds(20))
+    func provider(processes: FakeCodexProcesses = FakeCodexProcesses(), transport: FakeCodexTransport = FakeCodexTransport(), renewal: FakeCodexRenewal = FakeCodexRenewal(), calendar: Calendar = .current) -> CodexProvider {
+        CodexProvider(homeRoot: root, processes: processes, transport: transport, renewal: renewal, clock: { Self.date }, cacheDirectory: cache, calendar: calendar, pollInterval: .milliseconds(20))
     }
 
     func rollout(_ home: URL, name: String = "thread", lines: [String]) throws -> URL {

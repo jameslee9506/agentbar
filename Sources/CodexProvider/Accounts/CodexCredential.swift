@@ -13,6 +13,10 @@ struct CodexCredential {
 
     var identity: String { accountDigest + "." + (userDigest ?? "") }
 
+    func isExpired(at date: Date) -> Bool {
+        expiresAt.map { $0 <= date } ?? false
+    }
+
     static func read(home: URL) -> Self? {
         let file = home.appendingPathComponent("auth.json")
         guard let data = try? Data(contentsOf: file), data.count <= 1024 * 1024,
@@ -62,7 +66,7 @@ struct CodexCredential {
         return value
     }
 
-    // Deliberately excludes refresh tokens and API keys from the decoded credential.
+    // Deliberately excludes refresh tokens and API keys from the decoded credential: the CLI renews its own login.
     private struct Auth: Decodable {
         let auth_mode: String?
         let tokens: Tokens?

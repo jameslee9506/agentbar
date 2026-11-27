@@ -3,14 +3,16 @@ import Foundation
 
 actor UsageService {
     private let credentials: any CredentialReading
+    private let renewal: any CredentialRenewing
     private let transport: any UsageTransporting
     private let clock: @Sendable () -> Date
     private let cache: DiskCache
     private var successful: [String: UsageSnapshot] = [:]
 
-    init(credentials: any CredentialReading, transport: any UsageTransporting,
+    init(credentials: any CredentialReading, renewal: any CredentialRenewing, transport: any UsageTransporting,
          clock: @escaping @Sendable () -> Date, cache: DiskCache) {
         self.credentials = credentials
+        self.renewal = renewal
         self.transport = transport
         self.clock = clock
         self.cache = cache
@@ -31,17 +33,25 @@ actor UsageService {
     }
 
     func usage(for account: Account) async throws(UsageError) -> UsageSnapshot {
-        guard let credential = await credentials.read(for: account.home) else { throw .signedOut }
-        guard !credential.isExpired(at: clock()) else { throw .sessionExpired }
+        guard var credential = await credentials.read(for: account.home) else { throw .signedOut }
+        var renewed = false
+        if credential.isExpired(at: clock()) {
+            credential = try await renew(credential, home: account.home)
+            renewed = true
+        }
         var identity = verifiedIdentity(IdentityDocument.read(home: account.home))
         var response = try await request(credential.accessToken)
         if response.status == 401 {
-            guard let replacement = await credentials.read(for: account.home),
-                  replacement.accessToken != credential.accessToken,
-                  !replacement.isExpired(at: clock())
-            else { throw .sessionExpired }
+            if let replacement = await credentials.read(for: account.home),
+               replacement.accessToken != credential.accessToken, !replacement.isExpired(at: clock()) {
+                credential = replacement
+            } else if !renewed {
+                credential = try await renew(credential, home: account.home)
+            } else {
+                throw .sessionExpired
+            }
             identity = verifiedIdentity(IdentityDocument.read(home: account.home))
-            response = try await request(replacement.accessToken)
+            response = try await request(credential.accessToken)
         }
         switch response.status {
         case 200:
@@ -62,6 +72,14 @@ actor UsageService {
             let retry = response.headers.first { $0.key.caseInsensitiveCompare("Retry-After") == .orderedSame }?.value
             throw .rateLimited(retryAfter: Self.retryAfter(retry, now: clock()))
         default: throw .unavailable("HTTP \(response.status)")
+        }
+    }
+
+    private func renew(_ stale: OAuthCredential, home: URL) async throws(UsageError) -> OAuthCredential {
+        switch await renewal.renew(stale, for: home) {
+        case .renewed(let credential): return credential
+        case .rejected: throw .sessionExpired
+        case .unavailable: throw .unavailable("Sign-in renewal failed")
         }
     }
 

@@ -29,8 +29,9 @@ public enum ProviderKind: String, Codable, Sendable, CaseIterable, Comparable {
 
 /// Everything the app needs from one provider.
 ///
-/// A provider is a read-only observer of the accounts on this machine: it never writes to a config
-/// home or the Keychain and never refreshes tokens. All methods may be called concurrently.
+/// A provider observes the accounts on this machine. The one thing it changes is an expired login,
+/// which `usage` renews; nothing else is written to a config home or the Keychain. All methods may
+/// be called concurrently.
 public protocol AccountProvider: Sendable {
     var kind: ProviderKind { get }
 
@@ -40,7 +41,8 @@ public protocol AccountProvider: Sendable {
     /// The last usage known locally, without touching the network. `nil` when nothing is cached.
     func cachedUsage(for account: Account) async -> UsageSnapshot?
 
-    /// Current subscription usage from the provider's service.
+    /// Current subscription usage from the provider's service. Renews the login first when its access
+    /// token has expired.
     func usage(for account: Account) async throws(UsageError) -> UsageSnapshot
 
     /// Live sessions of the given accounts. Emits the full state at once, then again after every

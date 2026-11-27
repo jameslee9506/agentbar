@@ -3,6 +3,12 @@
 Accounts are immediate `.codex` and `.codex-*` homes with subscription credentials
 in `auth.json`. JWT claims supply display metadata. Each home stays separate.
 Credentials are reread for usage; refresh tokens are never decoded or used.
+An expired login, or one answered with 401, is renewed by the CLI: `codex app-server`
+runs with `CODEX_HOME` set and receives `account/read` with `refreshToken`, so the CLI
+refreshes and stores the tokens itself. It is stopped 3 seconds after its answer, or
+after 30 seconds without one. The CLI is looked up on `PATH`, then in `/opt/homebrew/bin`,
+`/usr/local/bin`, and `~/.local/bin`. The login counts as renewed when `auth.json` holds
+another, unexpired access token; otherwise that token is not tried again for 15 minutes.
 
 Live usage comes from `GET https://chatgpt.com/backend-api/wham/usage`.
 Only successful quota snapshots are cached, under an account identity digest.
